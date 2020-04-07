@@ -51,7 +51,7 @@ def get_security(context):
 
 
 
-        # TODO let it go或选取6只？
+
         # PB和市值
         pb_market_cap_df = get_fundamentals(query(
                 valuation
