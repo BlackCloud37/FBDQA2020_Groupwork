@@ -74,7 +74,8 @@ def get_security(context):
         for stock in stocks:
             if stock in pb_market_cap_df['code'].values and stock in change_pct_df['code'].values:
                 security.append(stock)
-
+    current_data = get_current_data(security_list=security)
+    security = [stock for stock in security if not current_data[stock].is_st]
     #log.debug("return security\n", security)
     return security
 
