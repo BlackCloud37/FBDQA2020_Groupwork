@@ -1,3 +1,4 @@
+#enable_profile()
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -33,8 +34,8 @@ def get_security(context):
             try:
                 pre_data = get_price(stock, start_date=None, end_date=pre_date, frequency='daily', fields=['close'], skip_paused=True, fq='post', count=1,panel=False)
                 pre_curr_data = get_price(stock, start_date=None, end_date=pre_curr_date, frequency='daily', fields=['close'], skip_paused=True, fq='post', count=1,panel=False)
-                log.debug('pre_data',pre_data)
-                log.debug('curr_data',pre_curr_data)
+                #log.debug('pre_data',pre_data)
+                #log.debug('curr_data',pre_curr_data)
                 pre_close = pre_data['close'].iloc[0]
                 pre_curr_close = pre_curr_data['close'].iloc[0]
                 change_pct = ( pre_close - pre_curr_close ) / pre_curr_close
@@ -46,8 +47,9 @@ def get_security(context):
         change_pct_df = pd.DataFrame({"code": stocks, "change_pct": change_pcts})
         change_pct_df.sort_values(by=['change_pct'], ascending=True, inplace=True)
 
+        #change_pct_df = change_pct_df.tail(int(0.2 * len(change_pct_df))+1)
         change_pct_df = change_pct_df.head(int(0.1 * len(change_pct_df))+1)
-        log.debug('change_pct_df',change_pct_df.head())
+        #log.debug('change_pct_df',change_pct_df.head())
 
 
 
@@ -65,7 +67,7 @@ def get_security(context):
             ), date=today)
         # 市值在前90%
         pb_market_cap_df = pb_market_cap_df.head(int(0.9 * len(pb_market_cap_df)) + 1)
-        log.debug('pb_market_cap_df',pb_market_cap_df.head())
+        #log.debug('pb_market_cap_df',pb_market_cap_df.head())
 
 
         # 取交集 加入最终股票池
@@ -73,7 +75,7 @@ def get_security(context):
             if stock in pb_market_cap_df['code'].values and stock in change_pct_df['code'].values:
                 security.append(stock)
 
-    log.debug("return security\n", security)
+    #log.debug("return security\n", security)
     return security
 
 
@@ -90,19 +92,19 @@ def get_allocation(context):
     for stock in stocks:
         price_df = get_price(stock, start_date=today + datetime.timedelta(days=-730), end_date=today, frequency='daily', fields=['close'])
         stock_prices_df[stock] = price_df['close'].values
-    log.debug("stock_prices_df",stock_prices_df.head())
+    #log.debug("stock_prices_df",stock_prices_df.head())
 
     # 计算收盘价数据的涨跌幅（收益率）
     stock_returns_df = stock_prices_df.pct_change().dropna()
-    log.debug("stock_returns_df",stock_returns_df.head())
+    #log.debug("stock_returns_df",stock_returns_df.head())
 
     # 相关系数
     correlation_matrix = stock_returns_df.corr()
-    log.debug("correlation_matrix",correlation_matrix)
+    #log.debug("correlation_matrix",correlation_matrix)
 
     # 协方差
     cov_mat = stock_returns_df.cov()
-    log.debug("cov_mat",cov_mat)
+    #log.debug("cov_mat",cov_mat)
     # 年化协方差矩阵
     cov_mat_annual = cov_mat * TREAD_DAY_COUNTS
 
@@ -148,37 +150,43 @@ def get_allocation(context):
 
     MSR_weights = np.array(random_portfolios_df.iloc[max_index, 0:len(stocks)])
 
-    log.debug("return allocation", MSR_weights)
-    log.debug("sum of allocation", MSR_weights.sum())
+    #log.debug("return allocation", MSR_weights)
+    #log.debug("sum of allocation", MSR_weights.sum())
     return MSR_weights
 
 # 计算买入卖出信号
-def get_signal(context):
+def get_signal(context, stock):
     log.debug("executing get_signal()")
     buy_signal = False
     sell_signal = False
-
-	# 策略
-    pool = ['801013.XSHG', '801081.XSHG', '801192.XSHG', '801194.XSHG', '801072.XSHG', '801152.XSHG']
+    # date = context.previous_date
+    # EMA_short =  EXPMA(stock,date,timeperiod = 5)[stock]
+    # EMA_long =  EXPMA(stock,date,timeperiod = 30)[stock]
+    # if EMA_short > EMA_long :
+    #     buy_signal=True
+    # else:
+    #     sell_signal=True
+    # # 策略
+    # #pool = ['801013.XSHG', '801081.XSHG', '801192.XSHG', '801194.XSHG', '801072.XSHG', '801152.XSHG']
     # 基准
-    stock = '000300.XSHG'
-    
-    HS_da = get_price(security = stock, 
+    #stock = '000300.XSHG'
+
+    HS_da = get_price(security = stock,
                       end_date = context.current_dt,
-                      frequency = 'daily', 
-                      fields = None, 
-                      skip_paused = False, 
+                      frequency = 'daily',
+                      fields = None,
+                      skip_paused = False,
                       fq = 'pre',
                       count = 50)['close']
     # 双EXPMA 参考宽客示例
     EMA_da_2 = EMA(stock, check_date= HS_da.index[-2], timeperiod=30)[stock]
     EMA_da_1 = EMA(stock, check_date= HS_da.index[-1], timeperiod=5)[stock]
-    
+
     # 短线上穿长线作买
     if HS_da[-2] < EMA_da_2 and HS_da[-1] > EMA_da_1:
         buy_signal=True
     # 短线下穿长线作卖
-    elif HS_da[-2] > EMA_da_2 and HS_da[-1] < EMA_da_1: 
+    elif HS_da[-2] > EMA_da_2 and HS_da[-1] < EMA_da_1:
         sell_signal=True
 
     # 输出
@@ -231,29 +239,33 @@ def before_market_open(context):
 def market_open(context):
     log.info('函数运行时间(market_open):'+str(context.current_dt.time()))
     security=g.security
-	# 取得当前的现金
+    MSR_weights = g.allocation
+    # 取得当前的现金
     cash = context.portfolio.available_cash
-	# 股票池更新
+    # 股票池更新
     if g.security_changed:
         g.security_changed = False
         # 空仓卖出
         for each in security:
             order_target(each, 0)
 
-    buy_signal, sell_signal = get_signal(context)
-    
-    if buy_signal:
-        # 按分配买入
-        i=0
-        for each in security:
-			# 按比例矢量买入
-            MSR_weights = get_allocation(context)
-            order_value(each,MSR_weights[i]*cash)
-            i=i+1
-    elif sell_signal:
-        # 空仓卖出
-        for each in security:
-            order_target(each, 0)
+    for i,stock in enumerate(security):
+        buy_signal, sell_signal = get_signal(context, stock)
+        if buy_signal:
+            order_value(stock, MSR_weights[i]*cash)
+        elif sell_signal:
+            order_target(stock, 0)
+    # buy_signal, sell_signal = get_signal(context)
+
+    # if buy_signal:
+    #     # 按分配买入
+    #     for i,each in enumerate(security):
+    #         # 按比例矢量买入
+    #         order_value(each,MSR_weights[i]*cash)
+    # elif sell_signal:
+    #     # 空仓卖出
+    #     for each in security:
+    #         order_target(each, 0)
 
 
 ## 收盘后运行函数
